@@ -22,6 +22,7 @@ import java.util.Vector;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Category;
 import org.apache.log4j.Hierarchy;
+import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 import org.apache.log4j.helpers.AppenderAttachableImpl;
 import org.apache.log4j.helpers.NullEnumeration;
@@ -38,6 +39,7 @@ import org.apache.log4j.spi.LoggingEvent;
 public class NFLockFreeLogger extends Logger {
 
     AppenderAttachableImpl aai;
+    private LoggingContext loggingContext = LoggingContext.getInstance();;
 
     protected NFLockFreeLogger(String name) {
         super(name);
@@ -154,6 +156,20 @@ public class NFLockFreeLogger extends Logger {
             }
         }
     }
+    
+    @Override
+    public Level getEffectiveLevel() {
+        if (loggingContext == null) {
+            return super.getEffectiveLevel();
+        }
+        // Return the logging level of the request if set
+        if (loggingContext.getContextLevel() != null) {
+            return loggingContext.getContextLevel();
+        }
+        
+        return super.getEffectiveLevel();
+    }
+
 
     /*
      * (non-Javadoc)

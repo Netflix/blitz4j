@@ -18,6 +18,7 @@ package com.netflix.blitz4j;
 
 import java.util.concurrent.TimeUnit;
 
+import org.apache.log4j.Level;
 import org.apache.log4j.MDC;
 import org.apache.log4j.spi.LocationInfo;
 import org.apache.log4j.spi.LoggingEvent;
@@ -46,6 +47,7 @@ public class LoggingContext {
     private static final String LOCATION_INFO = "locationInfo";
     private ThreadLocal<StackTraceElement> stackLocal = new ThreadLocal<StackTraceElement>();
     private ThreadLocal<LoggingEvent> loggingEvent = new ThreadLocal<LoggingEvent>();
+    private ThreadLocal<Level> contextLevel = new ThreadLocal<Level>();
 
     private static final LoggingContext instance = new LoggingContext();
     private Timer stackTraceTimer = Monitors.newTimer("getStacktraceElement",
@@ -194,5 +196,23 @@ public class LoggingContext {
 
         return locationInfo;
     }
+    
+    /**
+     * Set the context {@link Level} for the request-based logging
+     * @param level - The level of logging to be enabled for this request
+     */
+    public void setContextLevel(Level level) {
+        contextLevel.set(level);
+    }
+    
+    /**
+     * Get the context {@link Level} for the request-based logging
+     * @param level - The level of logging to be enabled for this request
+     */
+    public Level getContextLevel() {
+        return contextLevel.get();
+    }
+    
+    
 
 }
