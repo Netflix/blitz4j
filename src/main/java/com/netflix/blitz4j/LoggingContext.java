@@ -163,7 +163,7 @@ public class LoggingContext {
                 MDC.put(LOCATION_INFO, locationInfo);
             }
         } catch (Throwable e) {
-            if (CONFIGURATION
+            if (CONFIGURATION !=null && CONFIGURATION
                     .shouldPrintLoggingErrors()) {
                 e.printStackTrace();
             }
