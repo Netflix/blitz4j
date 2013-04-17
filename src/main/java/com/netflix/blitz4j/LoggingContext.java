@@ -43,6 +43,7 @@ import com.netflix.servo.monitor.Timer;
  */
 public class LoggingContext {
 
+    public static final String CONTEXT_LEVEL = "contextlevel";
     private static final BlitzConfig CONFIGURATION = LoggingConfiguration.getInstance().getConfiguration();
     private static final String LOCATION_INFO = "locationInfo";
     private ThreadLocal<StackTraceElement> stackLocal = new ThreadLocal<StackTraceElement>();
@@ -202,7 +203,7 @@ public class LoggingContext {
      * @param level - The level of logging to be enabled for this request
      */
     public void setContextLevel(Level level) {
-        contextLevel.set(level);
+        MDC.put(CONTEXT_LEVEL, level);
     }
     
     /**
@@ -210,7 +211,7 @@ public class LoggingContext {
      * @param level - The level of logging to be enabled for this request
      */
     public Level getContextLevel() {
-        return contextLevel.get();
+        return (Level)MDC.get(CONTEXT_LEVEL);
     }
     
     
