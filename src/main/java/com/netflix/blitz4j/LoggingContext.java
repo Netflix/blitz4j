@@ -207,6 +207,14 @@ public class LoggingContext {
     }
     
     /**
+     * Clears the context {@link Level} set for the request-based logging
+     */
+    public void clearContextLevel() {
+        MDC.remove(CONTEXT_LEVEL);
+    }
+    
+    
+    /**
      * Get the context {@link Level} for the request-based logging
      * @param level - The level of logging to be enabled for this request
      */
