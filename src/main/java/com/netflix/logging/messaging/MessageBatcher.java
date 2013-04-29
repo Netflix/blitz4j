@@ -115,7 +115,7 @@ public class MessageBatcher<T> {
 
     protected Counter queueOverflowCounter;
 
-    private boolean isShutDown;
+    private volatile boolean isShutDown;
 
     private AtomicLong numberAdded = new AtomicLong();
 
@@ -344,7 +344,13 @@ public class MessageBatcher<T> {
      * 
      */
     public void stop() {
-
+        /*
+         * Sets the shutdown flag. Future sends to the batcher are not accepted.
+         * The processors wait for the current messages in the queue and with
+         * the processor or collector to complete
+         */
+        isShutDown = true;
+        
         int waitTimeinMillis = CONFIGURATION.getBatcherWaitTimeBeforeShutdown(this.name);
         long timeToWait = waitTimeinMillis + System.currentTimeMillis();
         while ((queue.size() > 0 || batch.size() > 0)
@@ -366,13 +372,6 @@ public class MessageBatcher<T> {
             // TODO Auto-generated catch block
             e.printStackTrace();
         }
-        /*
-         * Sets the shutdown flag. Future sends to the batcher are not accepted.
-         * The processors wait for the current messages in the queue and with
-         * the processor or collector to complete
-         */
-        isShutDown = true;
-
     }
 
     /**
