@@ -240,8 +240,8 @@ public class AsyncAppender extends AppenderSkeleton implements
         }
         // If the buffer is full, then summarize the information
         if (CONFIGURATION.shouldSummarizeOverflow(this.originalAppenderName) && (!isBufferPutSuccessful)) {
-            DynamicCounter.increment(this.originalAppenderName
-                    + "_summarizeEvent", null);
+           DynamicCounter.increment(this.originalAppenderName
+                    + "_summarizeEvent");
             Stopwatch t = putDiscardMapTimeTracer.start();
             String loggerKey = event.getLoggerName();
             if (locationInfo != null) {
@@ -267,7 +267,7 @@ public class AsyncAppender extends AppenderSkeleton implements
             // Record the event that are not summarized and which are just
             // discarded
             DynamicCounter.increment(this.originalAppenderName
-                    + "_discardEvent", null);
+                    + "_discardEvent");
         }
 
     }
@@ -335,8 +335,7 @@ public class AsyncAppender extends AppenderSkeleton implements
      * @return - true, if the put was successful, false otherwise
      */
     private boolean putInBuffer(final LoggingEvent event) {
-        DynamicCounter.increment(this.originalAppenderName + "_putInBuffer",
-                null);
+        DynamicCounter.increment(this.originalAppenderName + "_putInBuffer");
         Stopwatch t = putBufferTimeTracer.start();
         boolean hasPut = false;
         if (batcher.process(event)) {
