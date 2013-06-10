@@ -26,7 +26,7 @@ test {
 }
 
 dependencies {
-    compile 'com.netflix.servo:servo-core:0.4.26'
+    compile 'com.netflix.servo:servo-core:0.4.36'
     compile 'com.netflix.archaius:archaius-core:0.4.1'
     compile 'org.slf4j:slf4j-api:1.6.4'
     compile 'log4j:log4j:1.2.17'
