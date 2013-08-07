@@ -57,20 +57,22 @@ AppenderAttachable {
         // removing the
         // previous one
         boolean isAppenderPresent = appenderList.contains(newAppender);
+        String appenderName = newAppender.getName() != null ? newAppender.getName(): "default";
         if (isAppenderPresent) {
             appenderList.add(newAppender);
             for (Iterator<Appender> it = appenderList.iterator(); it.hasNext();) {
                 Appender appender = it.next();
                 if (newAppender.equals(appender)) {
-                    appender.close();
+                    configuredAppenderList.add(appenderName);
                     it.remove();
+                    appender.close();
                     return;
                 }
             }
         } else {
             appenderList.add(newAppender);
         }
-        configuredAppenderList.add(newAppender.getName() != null ? newAppender.getName(): "default");
+        configuredAppenderList.add(appenderName);
     }
 
     /*
@@ -174,8 +176,8 @@ AppenderAttachable {
                 // retain the ability to queue the messages.
                 for (String asyncAppender : asyncAppenders) {
                     if (!(asyncAppender.equals(a.getClass().getName()))) {
-                        a.close();
-                        it.remove();
+                         it.remove();
+                         a.close();
                     }
                 }
             }

@@ -27,7 +27,6 @@ import java.util.Properties;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -158,6 +157,7 @@ public class LoggingConfiguration implements PropertyListener {
             loadLog4jConfigurationFile(log4jConfigurationFile);
             // First configure without async so that we can capture the output
             // of dependent libraries
+            clearAsyncAppenderList();
             PropertyConfigurator.configure(this.props);
         }
 
@@ -220,13 +220,21 @@ public class LoggingConfiguration implements PropertyListener {
         }
         // Yes second time init required as properties would have been during async appender conversion
         this.blitz4jConfig = new DefaultBlitz4jConfig(this.props);
-        
+        clearAsyncAppenderList();
         PropertyConfigurator.configure(this.props);
         closeNonexistingAsyncAppenders();
         this.logger = org.slf4j.LoggerFactory
         .getLogger(LoggingConfiguration.class);
         ConfigurationManager.getConfigInstance().addConfigurationListener(
                 new ExpandedConfigurationListenerAdapter(this));
+    }
+
+    private void clearAsyncAppenderList() {
+        org.apache.log4j.Logger asyncLogger = LoggerCache.getInstance()
+        .getOrCreateLogger("asyncAppenders");
+        if (asyncLogger != null) {
+            asyncLogger.removeAllAppenders();
+        }
     }
 
     private void loadLog4jConfigurationFile(String log4jConfigurationFile) {
@@ -412,6 +420,7 @@ public class LoggingConfiguration implements PropertyListener {
             props.setProperty(LOG4J_LOGGER_FACTORY, LOG4J_FACTORY_IMPL);
         }
         convertConfiguredAppendersToAsync(props);
+        clearAsyncAppenderList();
         logger.info("Configuring log4j with properties :" + props);
         PropertyConfigurator.configure(props);
     }
