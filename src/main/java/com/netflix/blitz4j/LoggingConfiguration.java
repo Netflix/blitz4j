@@ -204,9 +204,10 @@ public class LoggingConfiguration implements PropertyListener {
         }
         for (int i = 0; i < asyncAppenderArray.length; i++) {
             String oneAppenderName = asyncAppenderArray[i];
-            if (i == 0) {
+            if ((i == 0) || (oneAppenderName == null)) {
                 continue;
             }
+            oneAppenderName = oneAppenderName.trim();
             String oneAsyncAppenderName = oneAppenderName
             + ASYNC_APPENDERNAME_SUFFIX;
             originalAsyncAppenderNameMap.put(oneAppenderName,
@@ -529,8 +530,11 @@ public class LoggingConfiguration implements PropertyListener {
                         String valueString = "";
                         int ctr = 0;
                         for (String oneValue : values) {
+                            if (oneValue == null) {
+                                continue;
+                            }
                             ++ctr;
-                            if (originalAppenderName.equals(oneValue)) {
+                            if (originalAppenderName.equals(oneValue.trim())) {
                                 oneValue = asyncAppenderName;
                             }
                             if (ctr != values.length) {
