@@ -474,7 +474,7 @@ public class MessageBatcher<T> {
                                 batch.add(nextMessage);
                                 now = System.nanoTime();
                             }
-                        } while (batch.size() < stream.maxMessages);
+                        } while (batch.size() < stream.maxMessages && !shouldCollectorShutdown);
                     }
                     batchSize = batch.size();
                     if (batchSize > 0) {
