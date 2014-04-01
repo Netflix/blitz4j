@@ -581,7 +581,7 @@ public class MessageBatcher<T> {
         int keepAliveTime = CONFIGURATION.getBatcherThreadKeepAliveTime(this.name);
 
         ThreadFactory threadFactory = new ThreadFactoryBuilder()
-                .setDaemon(false).setNameFormat(this.name + "-process").build();
+                .setDaemon(true).setNameFormat(this.name + "-process").build();
 
         this.processor = new ThreadPoolExecutor(minThreads, maxThreads,
                 keepAliveTime, TimeUnit.SECONDS, new SynchronousQueue(),
