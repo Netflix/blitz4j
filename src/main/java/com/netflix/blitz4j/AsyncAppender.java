@@ -220,13 +220,12 @@ public class AsyncAppender extends AppenderSkeleton implements
         LocationInfo locationInfo = null;
         // Reject it when we have a fast property as these can be expensive
         Stopwatch s = locationInfoTimer.start();
-        if (CONFIGURATION.shouldSummarizeOverflow(this.originalAppenderName)) {
-            if (CONFIGURATION.shouldGenerateBlitz4jLocationInfo()) {
-                locationInfo = LoggingContext.getInstance()
-                        .generateLocationInfo(event);
-            } else if (CONFIGURATION.shouldGenerateLog4jLocationInfo()) {
-                locationInfo = event.getLocationInformation();
-            }
+
+        if (CONFIGURATION.shouldGenerateBlitz4jLocationInfo()) {
+            locationInfo = LoggingContext.getInstance().generateLocationInfo(event);
+        }
+        if (CONFIGURATION.shouldGenerateLog4jLocationInfo()) {
+            locationInfo = event.getLocationInformation();
         }
         s.stop();
 
