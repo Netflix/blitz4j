@@ -96,7 +96,7 @@ public class LoggingConfiguration implements PropertyListener {
 
     private static LoggingConfiguration instance = new LoggingConfiguration();
 
-    private LoggingConfiguration() {
+    protected LoggingConfiguration() {
         ThreadFactory threadFactory = new ThreadFactoryBuilder()
         .setDaemon(false).setNameFormat("DynamicLog4jListener").build();
 
