@@ -1,38 +1,27 @@
+plugins {
+    id 'nebula.netflixoss' version '2.2.5'
+    id 'java'
+    id 'jacoco'
+}
+
 // Establish version and status
 ext.githubProjectName = rootProject.name // Change if github project name is not the same as the root project's name
 group = "com.netflix.${githubProjectName}"
 
-buildscript {
-    repositories { mavenCentral() }
-    apply from: file('gradle/buildscript.gradle'), to: buildscript 
-}
+sourceCompatibility = 1.6
+targetCompatibility = 1.6
 
-allprojects {
-    repositories { mavenCentral() }
-}
-
-
-apply from: file('gradle/convention.gradle')
-apply from: file('gradle/maven.gradle')
-apply from: file('gradle/check.gradle')
-apply from: file('gradle/license.gradle')
-apply from: file('gradle/release.gradle')
-
-//apply plugin: 'war'
-//apply plugin: 'jetty'
-
-test {
- include 'com/netflix/blitz4j/**'
+repositories {
+    jcenter()
 }
 
 dependencies {
     compile 'com.netflix.servo:servo-core:0.4.36'
     compile 'com.netflix.archaius:archaius-core:0.4.1'
+    compile 'com.google.guava:guava:11.0.1'
     compile 'org.slf4j:slf4j-api:1.6.4'
     compile 'log4j:log4j:1.2.17'
-    compile 'org.slf4j:slf4j-api:1.6.4'
     compile 'commons-collections:commons-collections:3.2.1'
     testCompile 'junit:junit:4.10'
     testCompile 'org.slf4j:slf4j-log4j12:1.6.4'
 }
-
