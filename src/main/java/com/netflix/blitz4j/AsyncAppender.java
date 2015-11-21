@@ -25,6 +25,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
+import com.netflix.servo.DefaultMonitorRegistry;
+import com.netflix.servo.monitor.BasicCounter;
+import com.netflix.servo.monitor.Counter;
+import com.netflix.servo.monitor.MonitorConfig;
+import com.netflix.servo.monitor.Monitors;
+import com.netflix.servo.monitor.Stopwatch;
+import com.netflix.servo.monitor.Timer;
 import org.apache.log4j.Appender;
 import org.apache.log4j.AppenderSkeleton;
 import org.apache.log4j.helpers.AppenderAttachableImpl;
@@ -37,10 +44,6 @@ import com.netflix.logging.messaging.BatcherFactory;
 import com.netflix.logging.messaging.MessageBatcher;
 import com.netflix.logging.messaging.MessageProcessor;
 import com.netflix.servo.annotations.DataSourceType;
-import com.netflix.servo.monitor.DynamicCounter;
-import com.netflix.servo.monitor.Monitors;
-import com.netflix.servo.monitor.Stopwatch;
-import com.netflix.servo.monitor.Timer;
 
 /**
  * A log4j appender implementation that logs the events asynchronously after
@@ -90,10 +93,13 @@ public class AsyncAppender extends AppenderSkeleton implements
     private Timer locationInfoTimer;
     private Timer saveThreadLocalTimer;
 
+    private Counter summarizeEventCounter;
+    private Counter discardEventCounter;
+    private Counter putInBufferCounter;
+
    
     public AsyncAppender() {
         this.name = APPENDER_NAME;
-
     }
 
     @Override
@@ -240,8 +246,7 @@ public class AsyncAppender extends AppenderSkeleton implements
         }
         // If the buffer is full, then summarize the information
         if (CONFIGURATION.shouldSummarizeOverflow(this.originalAppenderName) && (!isBufferPutSuccessful)) {
-           DynamicCounter.increment(this.originalAppenderName
-                    + "_summarizeEvent");
+            summarizeEventCounter.increment();
             Stopwatch t = putDiscardMapTimeTracer.start();
             String loggerKey = event.getLoggerName();
             if (locationInfo != null) {
@@ -266,8 +271,7 @@ public class AsyncAppender extends AppenderSkeleton implements
         } else if (!CONFIGURATION.shouldSummarizeOverflow(this.originalAppenderName) && (!isBufferPutSuccessful)) {
             // Record the event that are not summarized and which are just
             // discarded
-            DynamicCounter.increment(this.originalAppenderName
-                    + "_discardEvent");
+            discardEventCounter.increment();
         }
 
     }
@@ -291,6 +295,12 @@ public class AsyncAppender extends AppenderSkeleton implements
         this.saveThreadLocalTimer = Monitors.newTimer("saveThreadLocal",
                 TimeUnit.NANOSECONDS);
 
+        // We register these counters differently to the above timers, because need to keep the metric names as they were when we were
+        // using DynamicCounter.increment() directly.
+        this.summarizeEventCounter = initAndRegisterCounter(this.originalAppenderName + "_summarizeEvent");
+        this.discardEventCounter = initAndRegisterCounter(this.originalAppenderName + "_discardEvent");
+        this.putInBufferCounter = initAndRegisterCounter(this.originalAppenderName + "_putInBuffer");
+
         this.logSummaryMap = CacheBuilder
                 .newBuilder()
                 .initialCapacity(5000)
@@ -309,6 +319,18 @@ public class AsyncAppender extends AppenderSkeleton implements
                 e.printStackTrace();
             }
         }
+    }
+
+    /**
+     * Construct a new Counter, register it, and then return it.
+     *
+     * @param name String
+     * @return Counter
+     */
+    private Counter initAndRegisterCounter(String name) {
+        BasicCounter counter = new BasicCounter(MonitorConfig.builder(name).build());
+        DefaultMonitorRegistry.getInstance().register(counter);
+        return counter;
     }
 
     /**
@@ -335,7 +357,7 @@ public class AsyncAppender extends AppenderSkeleton implements
      * @return - true, if the put was successful, false otherwise
      */
     private boolean putInBuffer(final LoggingEvent event) {
-        DynamicCounter.increment(this.originalAppenderName + "_putInBuffer");
+        putInBufferCounter.increment();
         Stopwatch t = putBufferTimeTracer.start();
         boolean hasPut = false;
         if (batcher.process(event)) {
