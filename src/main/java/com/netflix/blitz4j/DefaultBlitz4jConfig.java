@@ -48,15 +48,12 @@ public class DefaultBlitz4jConfig implements BlitzConfig {
     // Use concurrent hash map to avoid multithreaded contention
     private Map<String, Object> propsMap = new ConcurrentHashMap<String, Object>();
 
-    private Properties props;
-
     private static final DynamicPropertyFactory CONFIGURATION = DynamicPropertyFactory
             .getInstance();
 
     public DefaultBlitz4jConfig(Properties props) {
-        this.props = props;
-        if (this.props != null) {
-            Enumeration enumeration = this.props.propertyNames();
+        if (props != null) {
+            Enumeration enumeration = props.propertyNames();
             while (enumeration.hasMoreElements()) {
                 String key = (String) enumeration.nextElement();
                 String propertyValue = props.getProperty(key);

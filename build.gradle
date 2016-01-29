@@ -27,6 +27,7 @@ sourceCompatibility = 1.7
 targetCompatibility = 1.7
 
 test {
+    forkEvery = 1
     include 'com/netflix/blitz4j/**'
 }
 

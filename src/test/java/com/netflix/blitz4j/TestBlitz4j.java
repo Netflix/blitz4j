@@ -248,17 +248,41 @@ public class TestBlitz4j {
         LoggingConfiguration.getInstance().stop();
 
     }
+    
     @Test
     public void testReconfiguration() throws Exception {
         Properties props = new Properties();
-        props.setProperty("log4j.rootCategory", "INFO,stdout");
-        props.setProperty("log4j.appender.stdout",
-                "org.apache.log4j.ConsoleAppender");
-        props.setProperty("log4j.appender.stdout.layout",
-                "com.netflix.logging.log4jAdapter.NFPatternLayout");
-        props.setProperty("log4j.appender.stdout.layout.ConversionPattern",
-                "%d %-5p %C:%L [%t] [%M] %m%n");
+        props.setProperty("log4j.rootCategory",          "INFO,stdout");
+        props.setProperty("log4j.appender.stdout",       "org.apache.log4j.ConsoleAppender");
+        props.setProperty("log4j.appender.stdout.layout","com.netflix.logging.log4jAdapter.NFPatternLayout");
+        props.setProperty("log4j.appender.stdout.layout.ConversionPattern", "%d %-5p %C:%L [%t] [%M] %m%n");
         props.setProperty("log4j.logger.asyncAppenders", "INFO,stdout");
+        
+        LoggingConfiguration.getInstance().configure(props);
+        org.slf4j.Logger slfLogger = LoggerFactory.getLogger(this.getClass());
+        ConfigurationManager.getConfigInstance().setProperty(
+                "log4j.logger.com.netflix.blitz4j.TestBlitz4j", "DEBUG");
+
+        Thread.sleep(5000);
+        Assert.assertTrue(slfLogger.isDebugEnabled());
+        slfLogger.debug("You should see this");
+        ConfigurationManager.getConfigInstance().setProperty(
+                "log4j.logger.com.netflix.blitz4j.TestBlitz4j", "INFO");
+
+        Thread.sleep(4000);
+        Assert.assertFalse(slfLogger.isDebugEnabled());
+        LoggingConfiguration.getInstance().stop();
+    }
+
+    @Test
+    public void testFullReconfiguration() throws Exception {
+        Properties props = new Properties();
+        props.setProperty("log4j.rootCategory",          "INFO,stdout");
+        props.setProperty("log4j.appender.stdout",       "org.apache.log4j.ConsoleAppender");
+        props.setProperty("log4j.appender.stdout.layout","com.netflix.logging.log4jAdapter.NFPatternLayout");
+        props.setProperty("log4j.appender.stdout.layout.ConversionPattern", "%d %-5p %C:%L [%t] [%M] %m%n");
+        props.setProperty("log4j.logger.asyncAppenders", "INFO,stdout");
+        
         LoggingConfiguration.getInstance().configure(props);
         org.slf4j.Logger slfLogger = LoggerFactory.getLogger(this.getClass());
         ConfigurationManager.getConfigInstance().setProperty(
@@ -287,10 +311,8 @@ public class TestBlitz4j {
 
                         return m1.getValue() + "";
                     }
-
                 }
             }
-
         }
         return null;
     }
