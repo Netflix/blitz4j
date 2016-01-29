@@ -1,27 +1,42 @@
-plugins {
-    id 'nebula.netflixoss' version '2.2.5'
-    id 'java'
-    id 'jacoco'
+buildscript {
+    repositories { 
+        mavenCentral() 
+    }
 }
+
+plugins {
+    id 'nebula.netflixoss' version '2.2.9'
+    id 'nebula.provided-base' version '2.0.1'
+}
+
+apply plugin: 'nebula.netflixoss'
+apply plugin: 'nebula.provided-base'
+apply plugin: 'java'
 
 // Establish version and status
 ext.githubProjectName = rootProject.name // Change if github project name is not the same as the root project's name
 group = "com.netflix.${githubProjectName}"
 
-sourceCompatibility = 1.6
-targetCompatibility = 1.6
+allprojects {
+    repositories { 
+        mavenCentral() 
+    }
+}
 
-repositories {
-    jcenter()
+sourceCompatibility = 1.7
+targetCompatibility = 1.7
+
+test {
+    include 'com/netflix/blitz4j/**'
 }
 
 dependencies {
     compile 'com.netflix.servo:servo-core:0.4.36'
-    compile 'com.netflix.archaius:archaius-core:0.4.1'
-    compile 'com.google.guava:guava:11.0.1'
-    compile 'org.slf4j:slf4j-api:1.6.4'
+    compile 'com.netflix.archaius:archaius-core:0.7.3'
+    compile 'org.slf4j:slf4j-api:1.7.3'
     compile 'log4j:log4j:1.2.17'
     compile 'commons-collections:commons-collections:3.2.1'
-    testCompile 'junit:junit:4.10'
-    testCompile 'org.slf4j:slf4j-log4j12:1.6.4'
+    testCompile 'junit:junit:4.11'
+    testCompile 'org.slf4j:slf4j-log4j12:1.7.3'
 }
+
