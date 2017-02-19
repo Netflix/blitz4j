@@ -16,10 +16,17 @@
 
 package com.netflix.blitz4j;
 
+import java.util.Enumeration;
 import java.util.concurrent.TimeUnit;
 
+import com.netflix.logging.log4jAdapter.NFPatternLayout;
+import org.apache.log4j.Appender;
+import org.apache.log4j.Category;
 import org.apache.log4j.Level;
+import org.apache.log4j.Logger;
 import org.apache.log4j.MDC;
+import org.apache.log4j.helpers.AppenderAttachableImpl;
+import org.apache.log4j.spi.AppenderAttachable;
 import org.apache.log4j.spi.LocationInfo;
 import org.apache.log4j.spi.LoggingEvent;
 
@@ -157,11 +164,14 @@ public class LoggingContext {
         }
         LocationInfo locationInfo = null;
         try {
-            locationInfo = (LocationInfo) LoggingContext
-                    .getInstance()
-                    .getLocationInfo(Class.forName(event.getFQNOfLoggerClass()));
-            if (locationInfo != null) {
-                MDC.put(LOCATION_INFO, locationInfo);
+            // We should only generate location info if the caller is using NFPatternLayout otherwise this is expensive and unused.
+            if (isUsingNFPatternLayout(event)) {
+                locationInfo = (LocationInfo) LoggingContext
+                        .getInstance()
+                        .getLocationInfo(Class.forName(event.getFQNOfLoggerClass()));
+                if (locationInfo != null) {
+                    MDC.put(LOCATION_INFO, locationInfo);
+                }
             }
         } catch (Throwable e) {
             if (CONFIGURATION !=null && CONFIGURATION
@@ -170,6 +180,37 @@ public class LoggingContext {
             }
         }
         return locationInfo;
+    }
+
+    private boolean isUsingNFPatternLayout(LoggingEvent event) {
+        final Category logger = event.getLogger();
+        return logger != null && isUsingNFPatternLayout(logger.getAllAppenders());
+
+    }
+
+    private boolean isUsingNFPatternLayout(Enumeration enumeration) {
+        if (enumeration == null) {
+            return false;
+        }
+
+        while(enumeration.hasMoreElements()) {
+            Object maybeAppender = enumeration.nextElement();
+            if (maybeAppender instanceof Appender) {
+                Appender a = (Appender) maybeAppender;
+                if (a.getLayout() instanceof NFPatternLayout) {
+                    return true;
+                }
+            }
+
+            if (maybeAppender instanceof AppenderAttachable) {
+                AppenderAttachable aa = (AppenderAttachable) maybeAppender;
+                if (isUsingNFPatternLayout(aa.getAllAppenders())) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
