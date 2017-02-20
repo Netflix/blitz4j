@@ -30,10 +30,12 @@ import org.apache.log4j.spi.LoggingEvent;
 
 import java.util.Collections;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * The utility class that caches the context of logging such as location
@@ -57,7 +59,7 @@ public class LoggingContext {
     private ThreadLocal<StackTraceElement> stackLocal = new ThreadLocal<StackTraceElement>();
     private ThreadLocal<LoggingEvent> loggingEvent = new ThreadLocal<LoggingEvent>();
     private ThreadLocal<Level> contextLevel = new ThreadLocal<Level>();
-    private final Set<Category> loggerNeedsLocation = new CopyOnWriteArraySet<Category>();
+    private final AtomicReference<HashSet<Category>> loggerNeedsLocationRef = new AtomicReference<>(new HashSet<Category>());
 
     private static final LoggingContext instance = new LoggingContext();
     private Timer stackTraceTimer = Monitors.newTimer("getStacktraceElement",
@@ -189,6 +191,7 @@ public class LoggingContext {
             return false;
         }
 
+        HashSet<Category> loggerNeedsLocation = loggerNeedsLocationRef.get();
         // If we've already seen this logger and it needs location info, assume it still does.
         // Due to reconfiguration, it's possible it doesn't anymore, but this is rare so we optimize
         // for a fast return on loggers previously known to need location info.
@@ -198,8 +201,14 @@ public class LoggingContext {
 
         // If any of the appenders in the tree below need location information remember this logger and return.
         if (isUsingNFPatternLayout(logger.getAllAppenders())) {
-            loggerNeedsLocation.add(logger);
-            return true;
+            do {
+                HashSet<Category> copy = new HashSet<>(loggerNeedsLocation);
+                copy.add(logger);
+                if (loggerNeedsLocationRef.compareAndSet(loggerNeedsLocation, copy)) {
+                    return true;
+                }
+                loggerNeedsLocation = loggerNeedsLocationRef.get();
+            } while(true);
         }
 
         // If this is not an additive logger, our search is done, otherwise we must look at parents.
@@ -215,8 +224,14 @@ public class LoggingContext {
         // Now we need to traverse all parents and remember the top level logger whose parents need
         // location info if additivity was set to true.
         if(isUsingNFPatternLayout(parentLogger)) {
-            loggerNeedsLocation.add(logger);
-            return true;
+            do {
+                HashSet<Category> copy = new HashSet<>(loggerNeedsLocation);
+                copy.add(logger);
+                if (loggerNeedsLocationRef.compareAndSet(loggerNeedsLocation, copy)) {
+                    return true;
+                }
+                loggerNeedsLocation = loggerNeedsLocationRef.get();
+            } while(true);
         }
 
         // An exhaustive search returned nothing.  We want location information to show up when
