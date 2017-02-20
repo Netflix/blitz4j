@@ -57,7 +57,7 @@ public class LoggingContext {
     private ThreadLocal<StackTraceElement> stackLocal = new ThreadLocal<StackTraceElement>();
     private ThreadLocal<LoggingEvent> loggingEvent = new ThreadLocal<LoggingEvent>();
     private ThreadLocal<Level> contextLevel = new ThreadLocal<Level>();
-    private final Set<Category> loggerNeedsLocation = new CopyOnWriteArraySet<>(Collections.newSetFromMap(new WeakHashMap<Category, Boolean>()));
+    private final Set<Category> loggerNeedsLocation = new CopyOnWriteArraySet<Category>();
 
     private static final LoggingContext instance = new LoggingContext();
     private Timer stackTraceTimer = Monitors.newTimer("getStacktraceElement",
