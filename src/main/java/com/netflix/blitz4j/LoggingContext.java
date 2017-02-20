@@ -32,6 +32,7 @@ import java.util.Collections;
 import java.util.Enumeration;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -56,7 +57,7 @@ public class LoggingContext {
     private ThreadLocal<StackTraceElement> stackLocal = new ThreadLocal<StackTraceElement>();
     private ThreadLocal<LoggingEvent> loggingEvent = new ThreadLocal<LoggingEvent>();
     private ThreadLocal<Level> contextLevel = new ThreadLocal<Level>();
-    private final Set<Category> loggerNeedsLocation = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<Category, Boolean>()));
+    private final Set<Category> loggerNeedsLocation = new CopyOnWriteArraySet<>(Collections.newSetFromMap(new WeakHashMap<Category, Boolean>()));
 
     private static final LoggingContext instance = new LoggingContext();
     private Timer stackTraceTimer = Monitors.newTimer("getStacktraceElement",
