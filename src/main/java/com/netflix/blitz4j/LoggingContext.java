@@ -16,23 +16,23 @@
 
 package com.netflix.blitz4j;
 
-import java.util.Enumeration;
-import java.util.concurrent.TimeUnit;
-
 import com.netflix.logging.log4jAdapter.NFPatternLayout;
+import com.netflix.servo.monitor.Monitors;
+import com.netflix.servo.monitor.Stopwatch;
+import com.netflix.servo.monitor.Timer;
 import org.apache.log4j.Appender;
 import org.apache.log4j.Category;
 import org.apache.log4j.Level;
-import org.apache.log4j.Logger;
 import org.apache.log4j.MDC;
-import org.apache.log4j.helpers.AppenderAttachableImpl;
 import org.apache.log4j.spi.AppenderAttachable;
 import org.apache.log4j.spi.LocationInfo;
 import org.apache.log4j.spi.LoggingEvent;
 
-import com.netflix.servo.monitor.Monitors;
-import com.netflix.servo.monitor.Stopwatch;
-import com.netflix.servo.monitor.Timer;
+import java.util.Collections;
+import java.util.Enumeration;
+import java.util.Set;
+import java.util.WeakHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * The utility class that caches the context of logging such as location
@@ -56,6 +56,7 @@ public class LoggingContext {
     private ThreadLocal<StackTraceElement> stackLocal = new ThreadLocal<StackTraceElement>();
     private ThreadLocal<LoggingEvent> loggingEvent = new ThreadLocal<LoggingEvent>();
     private ThreadLocal<Level> contextLevel = new ThreadLocal<Level>();
+    private final Set<Category> loggerNeedsLocation = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<Category, Boolean>()));
 
     private static final LoggingContext instance = new LoggingContext();
     private Timer stackTraceTimer = Monitors.newTimer("getStacktraceElement",
@@ -165,7 +166,7 @@ public class LoggingContext {
         LocationInfo locationInfo = null;
         try {
             // We should only generate location info if the caller is using NFPatternLayout otherwise this is expensive and unused.
-            if (isUsingNFPatternLayout(event)) {
+            if (isUsingNFPatternLayout(event.getLogger())) {
                 locationInfo = (LocationInfo) LoggingContext
                         .getInstance()
                         .getLocationInfo(Class.forName(event.getFQNOfLoggerClass()));
@@ -182,9 +183,46 @@ public class LoggingContext {
         return locationInfo;
     }
 
-    private boolean isUsingNFPatternLayout(LoggingEvent event) {
-        final Category logger = event.getLogger();
-        return logger != null && isUsingNFPatternLayout(logger.getAllAppenders());
+    private boolean isUsingNFPatternLayout(Category logger) {
+        if (logger == null) {
+            return false;
+        }
+
+        // If we've already seen this logger and it needs location info, assume it still does.
+        // Due to reconfiguration, it's possible it doesn't anymore, but this is rare so we optimize
+        // for a fast return on loggers previously known to need location info.
+        if (loggerNeedsLocation.contains(logger)) {
+            return true;
+        }
+
+        // If any of the appenders in the tree below need location information remember this logger and return.
+        if (isUsingNFPatternLayout(logger.getAllAppenders())) {
+            loggerNeedsLocation.add(logger);
+            return true;
+        }
+
+        // If this is not an additive logger, our search is done, otherwise we must look at parents.
+        if (!logger.getAdditivity()) {
+            return false;
+        }
+
+        Category parentLogger = logger.getParent();
+        if (parentLogger == null) {
+            return false;
+        }
+
+        // Now we need to traverse all parents and remember the top level logger whose parents need
+        // location info if additivity was set to true.
+        if(isUsingNFPatternLayout(parentLogger)) {
+            loggerNeedsLocation.add(logger);
+            return true;
+        }
+
+        // An exhaustive search returned nothing.  We want location information to show up when
+        // a reconfiguration occurs so we don't cache the result.  This is still a much cheaper
+        // cost than generating a stack trace and so we are happy to pay it every time we log
+        // if we don't actually need the location information.
+        return false;
 
     }
 
