@@ -28,6 +28,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.commons.configuration.ConfigurationConverter;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.PropertyConfigurator;
@@ -317,6 +318,8 @@ public class LoggingConfiguration implements PropertyListener {
      * com.netflix.config.PropertyListener#configSourceLoaded(java.lang.Object)
      */
     public void configSourceLoaded(Object source) {
+        Properties props = ConfigurationConverter.getProperties(ConfigurationManager.getConfigInstance().subset("log4j"));
+        reconfigure(props);
     }
 
     /*
