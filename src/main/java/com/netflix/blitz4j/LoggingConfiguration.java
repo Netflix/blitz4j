@@ -22,14 +22,13 @@ import java.net.URL;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
-import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.commons.configuration.ConfigurationConverter;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.PropertyConfigurator;
@@ -86,30 +85,29 @@ public class LoggingConfiguration implements PropertyListener {
     
     private Map<String, String> originalAsyncAppenderNameMap = new HashMap<String, String>();
     private BlitzConfig blitz4jConfig;
-    private Properties props = new Properties();
-    private Properties updatedProps = new Properties();
+    private Properties initialProps = new Properties();
+    private Properties overrideProps = new Properties();
     private final ExecutorService executorPool;
+    private final AtomicInteger pendingRefreshes = new AtomicInteger();
+    private final AtomicInteger refreshCount = new AtomicInteger();
     private Logger logger;
-    private static final int SLEEP_TIME_MS = 200;
+    private static final int MIN_DELAY_BETWEEN_REFRESHES = 200;
     private static final CharSequence PROP_LOG4J_ASYNC_APPENDERS = "log4j.logger.asyncAppenders";
-
     private static LoggingConfiguration instance = new LoggingConfiguration();
 
     protected LoggingConfiguration() {
-        ThreadFactory threadFactory = new ThreadFactoryBuilder()
-            .setDaemon(false)
-            .setNameFormat("DynamicLog4jListener")
-            .build();
-
-        this.executorPool = new ThreadPoolExecutor(0, 1, 15 * 60,
-                TimeUnit.SECONDS, new ArrayBlockingQueue(100), threadFactory);
+        this.executorPool = Executors.newCachedThreadPool(
+            new ThreadFactoryBuilder()
+                .setDaemon(false)
+                .setNameFormat("DynamicLog4jListener")
+                .build());
     }
 
     /**
      * Kick start the blitz4j implementation
      */
     public void configure() {
-        this.configure(null);
+        this.configure(new Properties());
     }
 
     /**
@@ -119,6 +117,9 @@ public class LoggingConfiguration implements PropertyListener {
      *            - The overriding <em>log4j</em> properties if any.
      */
     public void configure(Properties props) {
+        this.refreshCount.set(0);
+        this.overrideProps.clear();
+        
         this.originalAsyncAppenderNameMap.clear();
        // First try to load the log4j configuration file from the classpath
         String log4jConfigurationFile = System.getProperty(PROP_LOG4J_CONFIGURATION);
@@ -133,7 +134,7 @@ public class LoggingConfiguration implements PropertyListener {
         
         String log4jLoggerFactory = System.getProperty(PROP_LOG4J_LOGGER_FACTORY);
         if (log4jLoggerFactory != null) {
-            this.props.setProperty(PROP_LOG4J_LOGGER_FACTORY, log4jLoggerFactory);
+            this.initialProps.setProperty(PROP_LOG4J_LOGGER_FACTORY, log4jLoggerFactory);
             if (nfHierarchy != null) {
                 try {
                     LoggerFactory loggerFactory = (LoggerFactory) Class.forName(log4jLoggerFactory).newInstance();
@@ -144,7 +145,7 @@ public class LoggingConfiguration implements PropertyListener {
                 }
             }
         } else {
-            this.props.setProperty(PROP_LOG4J_LOGGER_FACTORY, BLITZ_LOGGER_FACTORY);
+            this.initialProps.setProperty(PROP_LOG4J_LOGGER_FACTORY, BLITZ_LOGGER_FACTORY);
 
         }
         if (log4jConfigurationFile != null) {
@@ -152,7 +153,7 @@ public class LoggingConfiguration implements PropertyListener {
             // First configure without async so that we can capture the output
             // of dependent libraries
             clearAsyncAppenderList();
-            PropertyConfigurator.configure(this.props);
+            PropertyConfigurator.configure(this.initialProps);
         }
 
         this.blitz4jConfig = new DefaultBlitz4jConfig(props);
@@ -162,22 +163,22 @@ public class LoggingConfiguration implements PropertyListener {
                 URL url = Loader.getResource(LOG4J_PROPERTIES);
                 if (url != null) {
                     try (InputStream in = url.openStream()) {
-                        this.props.load(in);
+                        this.initialProps.load(in);
                     }
                 }
             } catch (Exception t) {
                 System.err.println("Error loading properties from " + LOG4J_PROPERTIES);
             } 
+        }   
+        
+        Enumeration enumeration = props.propertyNames();
+        while (enumeration.hasMoreElements()) {
+            String key = (String) enumeration.nextElement();
+            String propertyValue = props.getProperty(key);
+            this.initialProps.setProperty(key, propertyValue);
         }
-        if (props != null) {
-            Enumeration enumeration = props.propertyNames();
-            while (enumeration.hasMoreElements()) {
-                String key = (String) enumeration.nextElement();
-                String propertyValue = props.getProperty(key);
-                this.props.setProperty(key, propertyValue);
-            }
-        }
-        this.blitz4jConfig = new DefaultBlitz4jConfig(this.props);
+        
+        this.blitz4jConfig = new DefaultBlitz4jConfig(this.initialProps);
     
         String[] asyncAppenderArray = blitz4jConfig.getAsyncAppenders();
         if (asyncAppenderArray == null) {
@@ -193,15 +194,15 @@ public class LoggingConfiguration implements PropertyListener {
             originalAsyncAppenderNameMap.put(oneAppenderName, oneAsyncAppenderName);
         }
         try {
-            convertConfiguredAppendersToAsync(this.props);
-        } catch (Throwable e) {
+            convertConfiguredAppendersToAsync(this.initialProps);
+        } catch (Exception e) {
             throw new RuntimeException("Could not configure async appenders ",
                     e);
         }
         // Yes second time init required as properties would have been during async appender conversion
-        this.blitz4jConfig = new DefaultBlitz4jConfig(this.props);
+        this.blitz4jConfig = new DefaultBlitz4jConfig(this.initialProps);
         clearAsyncAppenderList();
-        PropertyConfigurator.configure(this.props);
+        PropertyConfigurator.configure(this.initialProps);
         closeNonexistingAsyncAppenders();
         this.logger = org.slf4j.LoggerFactory.getLogger(LoggingConfiguration.class);
         ConfigurationManager.getConfigInstance().addConfigurationListener(
@@ -219,7 +220,7 @@ public class LoggingConfiguration implements PropertyListener {
         try {
             URL url = new URL(log4jConfigurationFile);
             try (InputStream in = url.openStream()) {
-                this.props.load(in);
+                this.initialProps.load(in);
             }
         } catch (Exception t) {
             throw new RuntimeException(
@@ -234,7 +235,23 @@ public class LoggingConfiguration implements PropertyListener {
     public BlitzConfig getConfiguration() {
         return this.blitz4jConfig;
     }
-
+    
+    public Properties getInitialProperties() {
+        Properties props = new Properties();
+        props.putAll(this.initialProps);
+        return props;
+    }
+    
+    public Properties getOverrideProperties() {
+        Properties props = new Properties();
+        props.putAll(this.overrideProps);
+        return props;
+    }
+    
+    public int getRefreshCount() {
+        return this.refreshCount.get();
+    }
+    
     /**
      * Shuts down blitz4j cleanly by flushing out all the async related
      * messages.
@@ -266,9 +283,9 @@ public class LoggingConfiguration implements PropertyListener {
      * @see com.netflix.config.PropertyListener#addProperty(java.lang.Object,
      * java.lang.String, java.lang.Object, boolean)
      */
-    public void addProperty(Object source, String name, Object value, boolean beforeUpdate) {
-        if (shouldProcessProperty(name, beforeUpdate)) {
-            updatedProps.put(name, value);
+    public synchronized void addProperty(Object source, String name, Object value, boolean beforeUpdate) {
+        if (beforeUpdate == false && isLog4JProperty(name)) {
+            overrideProps.put(name, value);
             reConfigureAsynchronously();
         }
     }
@@ -287,9 +304,9 @@ public class LoggingConfiguration implements PropertyListener {
      * @see com.netflix.config.PropertyListener#clearProperty(java.lang.Object,
      * java.lang.String, java.lang.Object, boolean)
      */
-    public void clearProperty(Object source, String name, Object value, boolean beforeUpdate) {
-        if (shouldProcessProperty(name, beforeUpdate)) {
-            updatedProps.remove(name);
+    public synchronized void clearProperty(Object source, String name, Object value, boolean beforeUpdate) {
+        if (beforeUpdate == false && isLog4JProperty(name)) {
+            overrideProps.remove(name);
             reConfigureAsynchronously();
         }
     }
@@ -301,6 +318,8 @@ public class LoggingConfiguration implements PropertyListener {
      * com.netflix.config.PropertyListener#configSourceLoaded(java.lang.Object)
      */
     public void configSourceLoaded(Object source) {
+        Properties props = ConfigurationConverter.getProperties(ConfigurationManager.getConfigInstance().subset("log4j"));
+        reconfigure(props);
     }
 
     /*
@@ -309,14 +328,73 @@ public class LoggingConfiguration implements PropertyListener {
      * @see com.netflix.config.PropertyListener#setProperty(java.lang.Object,
      * java.lang.String, java.lang.Object, boolean)
      */
-    public void setProperty(Object source, String name, Object value,
+    public synchronized void setProperty(Object source, String name, Object value,
             boolean beforeUpdate) {
-        if (shouldProcessProperty(name, beforeUpdate)) {
-            updatedProps.put(name, value);
+        if (beforeUpdate == false && isLog4JProperty(name)) {
+            overrideProps.put(name, value);
             reConfigureAsynchronously();
         }
     }
 
+    /**
+     * Set a snapshot of all LOG4J properties and reconfigure if properties have been
+     * changed.  
+     * @param props Complete set of ALL log4j configuration properties including all
+     *              appenders and log level overrides
+     */
+    public synchronized void reconfigure(Properties props) {
+        // First isolate any property that is different from the immutable
+        // set of original initialization properties
+        Properties newOverrideProps = new Properties();
+        for (Entry<Object, Object> prop : props.entrySet()) {
+            if (isLog4JProperty(prop.getKey().toString())) {
+                Object initialValue = initialProps.get(prop.getKey());
+                if (initialValue == null || !initialValue.equals(prop.getValue())) {
+                    newOverrideProps.put(prop.getKey(), prop.getValue());
+                }
+            }
+        }
+        
+        // Compare against our cached set of override
+        if (!overrideProps.equals(newOverrideProps)) {
+            this.overrideProps.clear();
+            this.overrideProps.putAll(newOverrideProps);
+            reConfigureAsynchronously();
+        }
+    }
+    
+    /**
+     * Refresh the configuration asynchronously
+     */
+    private void reConfigureAsynchronously() {
+        refreshCount.incrementAndGet();
+        if (pendingRefreshes.incrementAndGet() == 1) {
+            executorPool.submit(new Runnable() {
+                @Override
+                public void run() {
+                    do {
+                        try {
+                            Thread.sleep(MIN_DELAY_BETWEEN_REFRESHES);
+                            logger.info("Configuring log4j dynamically");
+                            reconfigure();
+                        } 
+                        catch (Exception th) {
+                            logger.error("Cannot dynamically configure log4j :", th);
+                        }
+                    } while (0 != pendingRefreshes.getAndSet(0));
+                }
+            });
+        }
+    }
+    
+    private synchronized Properties getConsolidatedProperties() {
+        logger.info("Override properties are :" + overrideProps);
+        Properties consolidatedProps = new Properties();
+        consolidatedProps.putAll(initialProps);
+        consolidatedProps.putAll(overrideProps);
+        return consolidatedProps;
+    }
+    
     /**
      * Reconfigure log4j at run-time.
      * 
@@ -327,14 +405,11 @@ public class LoggingConfiguration implements PropertyListener {
      * @throws FileNotFoundException
      * @throws ConfigurationException
      */
-    private void reConfigure() throws ConfigurationException, FileNotFoundException {
-
-        Properties consolidatedProps = new Properties();
-        consolidatedProps.putAll(props);
-        logger.info("Updated properties is :" + updatedProps);
-        consolidatedProps.putAll(updatedProps);
-        logger.info("The root category for log4j.rootCategory now is " + consolidatedProps.getProperty(LOG4J_ROOT_CATEGORY));
-        logger.info("The root category for log4j.rootLogger now is " + consolidatedProps.getProperty(LOG4J_ROOT_LOGGER));
+    private void reconfigure() throws ConfigurationException, FileNotFoundException {
+        Properties consolidatedProps = getConsolidatedProperties();
+        
+        logger.info("The root category for log4j.rootCategory now is {}", consolidatedProps.getProperty(LOG4J_ROOT_CATEGORY));
+        logger.info("The root category for log4j.rootLogger now is {}", consolidatedProps.getProperty(LOG4J_ROOT_LOGGER));
 
         // Pause the async appenders so that the appenders are not accessed
         for (String originalAppenderName : originalAsyncAppenderNameMap.keySet()) {
@@ -377,29 +452,6 @@ public class LoggingConfiguration implements PropertyListener {
     }
 
     /**
-     * Asynchronously reconfigure <code>log4j</code>. This make sure there is
-     * only one configuration currently in progress and rejects multiple
-     * reconfigurations at the same time there by causing logging contentions.
-     */
-    private void reConfigureAsynchronously() {
-        try {
-            executorPool.submit(new Runnable() {
-                public void run() {
-                    try {
-                        Thread.sleep(SLEEP_TIME_MS);
-                        logger.info("Configuring log4j dynamically");
-                        reConfigure();
-                    } catch (Throwable th) {
-                        logger.error("Cannot dynamically configure log4j :", th);
-                    }
-                }
-            });
-        } catch (RejectedExecutionException re) {
-            throw re;
-        }
-    }
-
-    /**
      * Check if the property that is being changed is something that this
      * configuration cares about.
      * 
@@ -413,12 +465,8 @@ public class LoggingConfiguration implements PropertyListener {
      *            updated, false otherwise.
      * @return
      */
-    private boolean shouldProcessProperty(String name, boolean beforeUpdate) {
+    private boolean isLog4JProperty(String name) {
         if (name == null) {
-            logger.warn("The listener got a null value for name");
-            return false;
-        }
-        if (beforeUpdate) {
             return false;
         }
         return name.startsWith(LOG4J_PREFIX);
@@ -447,13 +495,13 @@ public class LoggingConfiguration implements PropertyListener {
                     + PROP_LOG4J_ORIGINAL_APPENDER_NAME, originalAppenderName);
             // Set the batcher to reject the collector request instead of it
             // participating in processing
-            this.props.setProperty("batcher." + AsyncAppender.class.getName() + "." + originalAppenderName + "." + "rejectWhenFull", "true");
+            this.initialProps.setProperty("batcher." + AsyncAppender.class.getName() + "." + originalAppenderName + "." + "rejectWhenFull", "true");
             
             // Set the default value of the processing max threads to 1, if a
             // value is not specified
-            String maxThreads = this.props.getProperty("batcher." + AsyncAppender.class.getName() + "." + originalAppenderName + "." + "maxThreads");
+            String maxThreads = this.initialProps.getProperty("batcher." + AsyncAppender.class.getName() + "." + originalAppenderName + "." + "maxThreads");
             if (maxThreads == null) {
-                this.props.setProperty("batcher." + AsyncAppender.class.getName() + "." + originalAppenderName + "." + "maxThreads", "1");
+                this.initialProps.setProperty("batcher." + AsyncAppender.class.getName() + "." + originalAppenderName + "." + "maxThreads", "1");
             }
 
             for (Map.Entry mapEntry : props.entrySet()) {
@@ -503,5 +551,4 @@ public class LoggingConfiguration implements PropertyListener {
             }
         }
     }
-
 }
