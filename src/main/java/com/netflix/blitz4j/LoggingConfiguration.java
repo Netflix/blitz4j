@@ -318,7 +318,7 @@ public class LoggingConfiguration implements PropertyListener {
      * com.netflix.config.PropertyListener#configSourceLoaded(java.lang.Object)
      */
     public void configSourceLoaded(Object source) {
-        Properties props = ConfigurationConverter.getProperties(ConfigurationManager.getConfigInstance().subset("log4j"));
+        Properties props = ConfigurationConverter.getProperties(ConfigurationManager.getConfigInstance());
         reconfigure(props);
     }
 
