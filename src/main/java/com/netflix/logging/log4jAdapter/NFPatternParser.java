@@ -33,66 +33,66 @@ import com.netflix.blitz4j.LoggingContext;
  * as class, line number etc.
  *
  * @author Karthik Ranganathan
- *
  */
 public class NFPatternParser extends PatternParser {
-  	private static List<Character> contextCharList = Arrays.asList(Character.valueOf('c'),
-	        Character.valueOf('l'),
-	        Character.valueOf('M'),
-	        Character.valueOf('C'),
-	        Character.valueOf('L'),
-	        Character.valueOf('F'));
+    private static List<Character> contextCharList = Arrays.asList(Character.valueOf('c'),
+            Character.valueOf('l'),
+            Character.valueOf('M'),
+            Character.valueOf('C'),
+            Character.valueOf('L'),
+            Character.valueOf('F'));
 
-	public NFPatternParser(String pattern) {
-		super(pattern);
-	    
-	}
+    public NFPatternParser(String pattern) {
+        super(pattern);
 
-	protected void finalizeConverter(char c) {
-		if (contextCharList.contains(Character.valueOf(c))) {
-			PatternConverter pc = new NFPatternConverter(formattingInfo, c);
-			addConverter(pc);
-			currentLiteral.setLength(0);
-		} else {
-			super.finalizeConverter(c);
-		}
-	}
+    }
 
-	private static class NFPatternConverter extends PatternConverter {
-	    private char type;
+    protected void finalizeConverter(char c) {
+        if (contextCharList.contains(Character.valueOf(c))) {
+            PatternConverter pc = new NFPatternConverter(formattingInfo, c);
+            addConverter(pc);
+            currentLiteral.setLength(0);
+        } else {
+            super.finalizeConverter(c);
+        }
+    }
 
-		NFPatternConverter(FormattingInfo formattingInfo, char type) {
-			super(formattingInfo);
-			this.type = type;
-		}
+    private static class NFPatternConverter extends PatternConverter {
+        private char type;
 
-		@Override
-		public String convert(LoggingEvent event) {
-		    LocationInfo locationInfo = LoggingContext.getInstance().getLocationInfo(event);
-		    if (locationInfo == null) {
-		        return "";
-		    }
-		    switch (type) {
-		    case 'M':
-		        return locationInfo.getMethodName();
-		    case 'c':
-		        return event.getLoggerName();
-		    case 'C':
-		        return locationInfo.getClassName();
-		    case 'L':
-		        return locationInfo.getLineNumber();
-		    case 'l':
-		        return (locationInfo.getFileName() + ":"
-		                + locationInfo.getClassName() + " "
-		                + locationInfo.getLineNumber() + " " + locationInfo
-		                .getMethodName());
-		    case 'F':
-		        return locationInfo.getFileName();
-		    }
-		    return "";
-		    
-		}
+        NFPatternConverter(FormattingInfo formattingInfo, char type) {
+            super(formattingInfo);
+            this.type = type;
+        }
 
-		
-	}
+        @Override
+        public String convert(LoggingEvent event) {
+            LoggingContext.getInstance().shouldGenerateLocationInfo(event.getLogger());
+            LocationInfo locationInfo = LoggingContext.getInstance().getLocationInfo(event);
+            if (locationInfo == null) {
+                return "";
+            }
+            switch (type) {
+                case 'M':
+                    return locationInfo.getMethodName();
+                case 'c':
+                    return event.getLoggerName();
+                case 'C':
+                    return locationInfo.getClassName();
+                case 'L':
+                    return locationInfo.getLineNumber();
+                case 'l':
+                    return (locationInfo.getFileName() + ":"
+                            + locationInfo.getClassName() + " "
+                            + locationInfo.getLineNumber() + " " + locationInfo
+                            .getMethodName());
+                case 'F':
+                    return locationInfo.getFileName();
+            }
+            return "";
+
+        }
+
+
+    }
 }
