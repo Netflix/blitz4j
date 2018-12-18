@@ -1,6 +1,8 @@
 Blitz4j
 =====
 
+[![NetflixOSS Lifecycle](https://img.shields.io/osslifecycle/Netflix/blitz4j.svg)]()
+
 Blitz4j is a logging framework built on top of log4j to reduce contention and enable highly scalable logging without affecting application performance characteristics. 
 
 At Netflix, Blitz4j is used to log billions of events for monitoring, business intelligence reporting, debugging and other purposes. Blitz4j overcomes traditional log4j
