@@ -1,43 +1,38 @@
 buildscript {
-    repositories { 
-        mavenCentral() 
+    repositories {
+        mavenCentral()
     }
 }
 
 plugins {
-    id 'nebula.netflixoss' version '2.2.9'
-    id 'nebula.provided-base' version '2.0.1'
+    id 'com.netflix.nebula.netflixoss' version '11.1.1'
+    id 'java'
 }
 
-apply plugin: 'nebula.netflixoss'
-apply plugin: 'nebula.provided-base'
-apply plugin: 'java'
+group = 'com.netflix.blitz4j'
 
-// Establish version and status
-ext.githubProjectName = rootProject.name // Change if github project name is not the same as the root project's name
-group = "com.netflix.${githubProjectName}"
-
-allprojects {
-    repositories { 
-        mavenCentral() 
+java {
+    toolchain {
+      languageVersion = JavaLanguageVersion.of(8)
     }
 }
 
-sourceCompatibility = 1.7
-targetCompatibility = 1.7
-
 test {
     forkEvery = 1
-    include 'com/netflix/blitz4j/**'
+}
+
+repositories {
+    mavenCentral()
 }
 
 dependencies {
-    compile 'com.netflix.servo:servo-core:0.4.36'
-    compile 'com.netflix.archaius:archaius-core:0.7.3'
-    compile 'org.slf4j:slf4j-api:1.7.3'
-    compile 'log4j:log4j:1.2.17'
-    compile 'commons-collections:commons-collections:3.2.1'
-    testCompile 'junit:junit:4.11'
-    testCompile 'org.slf4j:slf4j-log4j12:1.7.3'
-}
+    implementation 'com.netflix.servo:servo-core:0.4.36'
+    implementation 'com.netflix.archaius:archaius-core:0.7.3'
+    implementation 'org.slf4j:slf4j-api:1.7.3'
+    implementation 'log4j:log4j:1.2.17'
+    implementation 'commons-collections:commons-collections:3.2.1'
+    implementation 'commons-configuration:commons-configuration:1.8'
 
+    testImplementation 'junit:junit:4.11'
+    testImplementation 'org.slf4j:slf4j-log4j12:1.7.3'
+}

@@ -58,7 +58,6 @@ public class BatcherFactory {
 	 * 
 	 * @param name - The name of the batcher to be created
 	 * @param processor - The user override for actions to be performed on the batched messages.
-	 * @return
 	 */
 	public static MessageBatcher createBatcher(String name,
 			MessageProcessor processor) {

@@ -4,16 +4,12 @@ public interface BlitzConfig {
 
     /**
      * Indicates whether blitz4j should use its less contended implementation.
-     * 
-     * @return
      */
     public abstract boolean shouldUseLockFree();
 
     /**
      * Indicates whether blitz4j should print the errors during logging for
      * debugging.
-     * 
-     * @return
      */
     public abstract boolean shouldPrintLoggingErrors();
 
@@ -23,8 +19,6 @@ public interface BlitzConfig {
      * (ie)log4j.logger.asyncAppenders=INFO,MYAPPENDER. The logging level in
      * this definitions bears no specific significance and is only for
      * completion.
-     * 
-     * @return
      */
     public abstract String[] getAsyncAppenders();
 
@@ -33,7 +27,6 @@ public interface BlitzConfig {
      * 
      * @param originalAppenderName
      *            - The name of the appender for which the logging is done
-     * @return
      */
     public abstract int getLogSummaryExpiry(String originalAppenderName);
 
@@ -42,7 +35,6 @@ public interface BlitzConfig {
      * 
      * @param originalAppenderName
      *            - The name of the appender for which the logging is done
-     * @return
      */
     public abstract int getLogSummarySize(String originalAppenderName);
 
