@@ -53,12 +53,12 @@ import com.netflix.servo.annotations.DataSourceType;
  * Incoming events are first stored in a queue and then worker thread(s) takes
  * the messages and writes it to the underlying appenders. This makes the
  * logging of the messages efficient for the following reasons
- * 
+ *
  * 1) Logging threads do not block until the event is written to the
  * destination, but block only until the message is written to the queue which
  * should be way faster than having to wait until it is written to the
  * underlying destination
- * 
+ *
  * 2) During log storms, the in-memory buffer overflows the message to another
  * structure which logs just the summary and not each log message
  * </p>
@@ -68,9 +68,9 @@ import com.netflix.servo.annotations.DataSourceType;
  * configurable. The summary also starts dropping its entries when it stays
  * there longer than 1 min which is configurable as well.
  * </p>
- * 
+ *
  * @author Karthik Ranganathan
- * 
+ *
  */
 public class AsyncAppender extends AppenderSkeleton implements
         AppenderAttachable {
@@ -97,7 +97,7 @@ public class AsyncAppender extends AppenderSkeleton implements
     private Counter discardEventCounter;
     private Counter putInBufferCounter;
 
-   
+
     public AsyncAppender() {
         this.name = APPENDER_NAME;
     }
@@ -133,7 +133,7 @@ public class AsyncAppender extends AppenderSkeleton implements
     /**
      * Initialize the batcher that stores the messages and calls the underlying
      * appenders.
-     * 
+     *
      * @param appenderName
      *            - The name of the appender for which the batcher is created
      */
@@ -153,7 +153,7 @@ public class AsyncAppender extends AppenderSkeleton implements
 
     /**
      * Process the logging events. This is called by the batcher.
-     * 
+     *
      * @param loggingEvents
      *            - The logging events to be written to the underlying appender
      */
@@ -162,7 +162,7 @@ public class AsyncAppender extends AppenderSkeleton implements
         // original appenders configuration may be available only after the
         // complete
         // log4j initialization.
-        while (appenders.getAllAppenders() == null) {
+        while (appenders.getAllAppenders() == null || (appenders != null && !appenders.getAllAppenders().hasMoreElements())) {
             if ((batcher == null) || (batcher.isPaused())) {
                 try {
                     Thread.sleep(SLEEP_TIME_MS);
@@ -279,7 +279,7 @@ public class AsyncAppender extends AppenderSkeleton implements
     /**
      * Sets the name of the underlying appender that is wrapped by this
      * <code>AsyncAppender</code>
-     * 
+     *
      * @param name
      *            - The name of the underlying appender
      */
@@ -336,7 +336,7 @@ public class AsyncAppender extends AppenderSkeleton implements
     /**
      * Save the thread local info of the event in the event itself for
      * processing later.
-     * 
+     *
      * @param event
      *            - The logging event for which the information should be saved
      */
@@ -351,7 +351,7 @@ public class AsyncAppender extends AppenderSkeleton implements
 
     /**
      * Puts the logging events to the in-memory buffer.
-     * 
+     *
      * @param event
      *            - The event that needs to be put in the buffer.
      * @return - true, if the put was successful, false otherwise
@@ -378,7 +378,7 @@ public class AsyncAppender extends AppenderSkeleton implements
 
         /**
          * Create new instance.
-         * 
+         *
          * @param event
          *            event, may not be null.
          */
@@ -389,7 +389,7 @@ public class AsyncAppender extends AppenderSkeleton implements
 
         /**
          * Add discarded event to summary.
-         * 
+         *
          * @param event
          *            event, may not be null.
          */
@@ -399,7 +399,7 @@ public class AsyncAppender extends AppenderSkeleton implements
 
         /**
          * Create event with summary information.
-         * 
+         *
          * @return new event.
          */
         public LoggingEvent createEvent() {
@@ -419,7 +419,7 @@ public class AsyncAppender extends AppenderSkeleton implements
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see org.apache.log4j.AppenderSkeleton#close()
      */
     @Override
@@ -431,7 +431,7 @@ public class AsyncAppender extends AppenderSkeleton implements
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see org.apache.log4j.spi.AppenderAttachable#getAllAppenders()
      */
     @Override
@@ -443,7 +443,7 @@ public class AsyncAppender extends AppenderSkeleton implements
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see
      * org.apache.log4j.spi.AppenderAttachable#getAppender(java.lang.String)
      */
@@ -456,7 +456,7 @@ public class AsyncAppender extends AppenderSkeleton implements
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see
      * org.apache.log4j.spi.AppenderAttachable#isAttached(org.apache.log4j.Appender
      * )
@@ -470,7 +470,7 @@ public class AsyncAppender extends AppenderSkeleton implements
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see org.apache.log4j.AppenderSkeleton#requiresLayout()
      */
     @Override
@@ -480,7 +480,7 @@ public class AsyncAppender extends AppenderSkeleton implements
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see org.apache.log4j.spi.AppenderAttachable#removeAllAppenders()
      */
     @Override
@@ -492,7 +492,7 @@ public class AsyncAppender extends AppenderSkeleton implements
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see
      * org.apache.log4j.spi.AppenderAttachable#removeAppender(org.apache.log4j
      * .Appender)
@@ -506,7 +506,7 @@ public class AsyncAppender extends AppenderSkeleton implements
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see
      * org.apache.log4j.spi.AppenderAttachable#removeAppender(java.lang.String)
      */
@@ -519,7 +519,7 @@ public class AsyncAppender extends AppenderSkeleton implements
 
     /*
      * (non-Javadoc)
-     * 
+     *
      * @see
      * org.apache.log4j.spi.AppenderAttachable#addAppender(org.apache.log4j.
      * Appender)
@@ -535,9 +535,9 @@ public class AsyncAppender extends AppenderSkeleton implements
     public int getDiscadMapSize() {
         return logSummaryMap.size();
     }
- 
+
     @Override
     public void doAppend(LoggingEvent event) {
-        this.append(event); 
+        this.append(event);
     }
 }
