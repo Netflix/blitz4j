@@ -21,6 +21,8 @@ import java.io.InputStream;
 import java.net.URL;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
@@ -28,8 +30,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.apache.commons.configuration.AbstractConfiguration;
 import org.apache.commons.configuration.ConfigurationConverter;
 import org.apache.commons.configuration.ConfigurationException;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.PropertyConfigurator;
 import org.apache.log4j.helpers.Loader;
@@ -318,7 +322,19 @@ public class LoggingConfiguration implements PropertyListener {
      * com.netflix.config.PropertyListener#configSourceLoaded(java.lang.Object)
      */
     public void configSourceLoaded(Object source) {
-        Properties props = ConfigurationConverter.getProperties(ConfigurationManager.getConfigInstance());
+        AbstractConfiguration config = ConfigurationManager.getConfigInstance();
+        Properties props = new Properties();
+
+        char delimiter = config.getListDelimiter();
+
+        for (Iterator<String> keys = config.getKeys(LOG4J_PREFIX); keys.hasNext();) {
+            String key = keys.next();
+            List<Object> list = config.getList(key);
+
+            // turn the list into a string
+            props.setProperty(key, StringUtils.join(list.iterator(), delimiter));
+        }
+
         reconfigure(props);
     }
 
@@ -347,11 +363,9 @@ public class LoggingConfiguration implements PropertyListener {
         // set of original initialization properties
         Properties newOverrideProps = new Properties();
         for (Entry<Object, Object> prop : props.entrySet()) {
-            if (isLog4JProperty(prop.getKey().toString())) {
-                Object initialValue = initialProps.get(prop.getKey());
-                if (initialValue == null || !initialValue.equals(prop.getValue())) {
-                    newOverrideProps.put(prop.getKey(), prop.getValue());
-                }
+            Object initialValue = initialProps.get(prop.getKey());
+            if (initialValue == null || !initialValue.equals(prop.getValue())) {
+                newOverrideProps.put(prop.getKey(), prop.getValue());
             }
         }
         
