@@ -354,7 +354,8 @@ public class LoggingConfiguration implements PropertyListener {
 
     /**
      * Set a snapshot of all LOG4J properties and reconfigure if properties have been
-     * changed.  
+     * changed. This assumes that the Properties being set here has already been filtered
+     * to only properties starting with LOG4J_PREFIX.
      * @param props Complete set of ALL log4j configuration properties including all
      *              appenders and log level overrides
      */
