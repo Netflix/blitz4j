@@ -26,13 +26,13 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.netflix.servo:servo-core:0.4.36'
-    implementation 'com.netflix.archaius:archaius-core:0.7.3'
+    implementation 'com.netflix.servo:servo-core:0.4.49'
+    implementation 'com.netflix.archaius:archaius-core:0.7.8'
     implementation 'org.slf4j:slf4j-api:1.7.3'
     implementation 'log4j:log4j:1.2.17'
-    implementation 'commons-collections:commons-collections:3.2.1'
+    implementation 'commons-collections:commons-collections:3.2.2'
     implementation 'commons-configuration:commons-configuration:1.8'
 
-    testImplementation 'junit:junit:4.11'
+    testImplementation 'junit:junit:4.13.1'
     testImplementation 'org.slf4j:slf4j-log4j12:1.7.3'
 }
