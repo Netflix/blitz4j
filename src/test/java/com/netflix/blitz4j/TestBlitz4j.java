@@ -22,6 +22,7 @@ import java.util.Properties;
 
 import org.junit.After;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +38,12 @@ public class TestBlitz4j {
     protected Properties props = new Properties();
     private static final String consoleSummarizeEvent = "stdout_summarizeEvent";
     private static final String consoleEventsProcessed = "stdout_putInBuffer";
+
+    @BeforeClass
+    public static void setUp() {
+        // Starting with servo 0.13.x the default registry is a NoOp, but we rely on having a real one because we use collected metrics to validate behavior
+        System.setProperty("com.netflix.servo.DefaultMonitorRegistry.registryClass", "com.netflix.servo.jmx.JmxMonitorRegistry");
+    }
 
     @After
     public void tearDown() throws Exception {
